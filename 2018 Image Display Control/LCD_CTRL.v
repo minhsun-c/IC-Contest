@@ -172,6 +172,33 @@ assign OpIdx3 = OpIdx + 6'd9;
 
 reg [7:0] peep0, peep1, peep2, peep3;
 
+/* Comparison */
+reg [5:0] min_idx, max_idx;
+wire [9:0] sum_val;
+            
+assign sum_val = (RAM[OpIdx] + RAM[OpIdx1] + RAM[OpIdx2] + RAM[OpIdx3]);
+            
+always @(*) begin
+    if (RAM[OpIdx] >= RAM[OpIdx1] && RAM[OpIdx] >= RAM[OpIdx2] && RAM[OpIdx] >= RAM[OpIdx3])
+        max_idx = OpIdx;
+    else if (RAM[OpIdx1] >= RAM[OpIdx] && RAM[OpIdx1] >= RAM[OpIdx2] && RAM[OpIdx1] >= RAM[OpIdx3])
+        max_idx = OpIdx1;
+    else if (RAM[OpIdx2] >= RAM[OpIdx] && RAM[OpIdx2] >= RAM[OpIdx1] && RAM[OpIdx2] >= RAM[OpIdx3])
+        max_idx = OpIdx2;
+    else
+        max_idx = OpIdx3;
+end
+always @(*) begin
+    if (RAM[OpIdx] <= RAM[OpIdx1] && RAM[OpIdx] <= RAM[OpIdx2] && RAM[OpIdx] <= RAM[OpIdx3])
+        min_idx = OpIdx;
+    else if (RAM[OpIdx1] <= RAM[OpIdx] && RAM[OpIdx1] <= RAM[OpIdx2] && RAM[OpIdx1] <= RAM[OpIdx3])
+        min_idx = OpIdx1;
+    else if (RAM[OpIdx2] <= RAM[OpIdx] && RAM[OpIdx2] <= RAM[OpIdx1] && RAM[OpIdx2] <= RAM[OpIdx3])
+        min_idx = OpIdx2;
+    else
+        min_idx = OpIdx3;
+end
+
 always @(posedge clk or posedge reset) begin
     if (reset) begin
         OpIdx <= 6'h1B;
@@ -244,31 +271,6 @@ always @(posedge clk or posedge reset) begin
     else begin
         
     end
-end
-
-/* Comparison */
-reg [5:0] min_idx, max_idx;
-wire [9:0] sum_val;
-assign sum_val = (RAM[OpIdx] + RAM[OpIdx1] + RAM[OpIdx2] + RAM[OpIdx3]);
-always @(*) begin
-    if (RAM[OpIdx] >= RAM[OpIdx1] && RAM[OpIdx] >= RAM[OpIdx2] && RAM[OpIdx] >= RAM[OpIdx3])
-        max_idx = OpIdx;
-    else if (RAM[OpIdx1] >= RAM[OpIdx] && RAM[OpIdx1] >= RAM[OpIdx2] && RAM[OpIdx1] >= RAM[OpIdx3])
-        max_idx = OpIdx1;
-    else if (RAM[OpIdx2] >= RAM[OpIdx] && RAM[OpIdx2] >= RAM[OpIdx1] && RAM[OpIdx2] >= RAM[OpIdx3])
-        max_idx = OpIdx2;
-    else
-        max_idx = OpIdx3;
-end
-always @(*) begin
-    if (RAM[OpIdx] <= RAM[OpIdx1] && RAM[OpIdx] <= RAM[OpIdx2] && RAM[OpIdx] <= RAM[OpIdx3])
-        min_idx = OpIdx;
-    else if (RAM[OpIdx1] <= RAM[OpIdx] && RAM[OpIdx1] <= RAM[OpIdx2] && RAM[OpIdx1] <= RAM[OpIdx3])
-        min_idx = OpIdx1;
-    else if (RAM[OpIdx2] <= RAM[OpIdx] && RAM[OpIdx2] <= RAM[OpIdx1] && RAM[OpIdx2] <= RAM[OpIdx3])
-        min_idx = OpIdx2;
-    else
-        min_idx = OpIdx3;
 end
 
 /*
