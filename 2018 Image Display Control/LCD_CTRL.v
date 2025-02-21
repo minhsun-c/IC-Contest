@@ -13,10 +13,11 @@ output reg  [5:0]    IRAM_A;
 output reg           busy;
 output reg           done;
 
-parameter   FetchStage   = 2'd0,
-            IdleStage    = 2'd1,
-            CommandStage = 2'd2,
-            WriteStage   = 2'd3;
+parameter   FetchStage   = 3'd0,
+            IdleStage    = 3'd1,
+            CommandStage = 3'd2,
+            WriteStage   = 3'd3,
+            EndStage     = 3'd4;
 
 parameter   WriteCmd        = 4'h0,
             ShiftUpCmd      = 4'h1,
@@ -32,8 +33,8 @@ parameter   WriteCmd        = 4'h0,
             MirrorYCmd      = 4'hB;
 
 reg [7:0]   RAM [63:0];
-reg [1:0]   state;
-reg [1:0]   next_state;
+reg [2:0]   state;
+reg [2:0]   next_state;
 
 /* 
 ===========================================================================================================
@@ -62,7 +63,10 @@ always @(*) begin
         next_state = IdleStage;
     end
     else if (state == WriteStage) begin
-        next_state = WriteStage;
+        if (IRAM_A == 6'd63)
+            next_state = EndStage;
+        else
+            next_state = WriteStage;
     end
     else begin
         next_state = next_state;
@@ -97,30 +101,10 @@ always @(*) begin
     else if (state == WriteStage) begin
         busy <= 1'b1;
         IRAM_valid <= 1'b1;
+        done <= 1'b0;
     end
-    else begin
-        
-    end
-end
-
-always @(posedge clk) begin
-    if (state == IdleStage) begin
-        if (cmd == WriteCmd) $display("Command Name: WriteCmd");
-        else if (cmd == ShiftUpCmd) $display("Command Name: ShiftUpCmd");
-        else if (cmd == ShiftDownCmd) $display("Command Name: ShiftDownCmd");
-        else if (cmd == ShiftLeftCmd) $display("Command Name: ShiftLeftCmd");
-        else if (cmd == ShiftRightCmd) $display("Command Name: ShiftRightCmd");
-        else if (cmd == MaxCmd) $display("Command Name: MaxCmd");
-        else if (cmd == MinCmd) $display("Command Name: MinCmd");
-        else if (cmd == AverageCmd) $display("Command Name: AverageCmd");
-        else if (cmd == CCWRotateCmd) $display("Command Name: CCWRotateCmd");
-        else if (cmd == CWRotateCmd) $display("Command Name: CWRotateCmd");
-        else if (cmd == MirrorXCmd) $display("Command Name: MirrorXCmd");
-        else if (cmd == MirrorYCmd) $display("Command Name: MirrorYCmd");
-        else $display("No Command");
-    end
-    else begin
-        
+    else if (state == EndStage) begin
+        done <= 1'b1;
     end
 end
 
@@ -147,11 +131,9 @@ always @(posedge clk or posedge reset) begin
         IROM_rd <= 1'b1;
     end
     else if (state == FetchStage) begin
-        RAM[IROM_A] <= IROM_Q;
         IROM_rd <= 1'b1;
     end
     else begin
-        RAM[IROM_A] <= RAM[IROM_A];
         IROM_rd <= 1'b0;
     end
 end
@@ -170,14 +152,10 @@ assign OpIdx1 = OpIdx + 6'd1;
 assign OpIdx2 = OpIdx + 6'd8;
 assign OpIdx3 = OpIdx + 6'd9;
 
-reg [7:0] peep0, peep1, peep2, peep3;
-
 /* Comparison */
 reg [5:0] min_idx, max_idx;
 wire [9:0] sum_val;
-            
 assign sum_val = (RAM[OpIdx] + RAM[OpIdx1] + RAM[OpIdx2] + RAM[OpIdx3]);
-            
 always @(*) begin
     if (RAM[OpIdx] >= RAM[OpIdx1] && RAM[OpIdx] >= RAM[OpIdx2] && RAM[OpIdx] >= RAM[OpIdx3])
         max_idx = OpIdx;
@@ -202,12 +180,11 @@ end
 always @(posedge clk or posedge reset) begin
     if (reset) begin
         OpIdx <= 6'h1B;
-        peep0 <= 0;
-        peep1 <= 0;
-        peep2 <= 0;
-        peep3 <= 0;
     end
-    else if (CommandStage && busy) begin
+    else if (state == FetchStage && busy) begin
+        RAM[IROM_A] <= IROM_Q;
+    end
+    else if (state == CommandStage && busy) begin
         case (cmd)
             ShiftUpCmd: 
                 OpIdx[5:3] <= (OpIdx[5:3] == 3'd0) ? OpIdx[5:3] : OpIdx[5:3] - 3'd1;
@@ -263,10 +240,6 @@ always @(posedge clk or posedge reset) begin
                 OpIdx <= OpIdx;
             end
         endcase
-        peep0 <= RAM[OpIdx];
-        peep1 <= RAM[OpIdx1];
-        peep2 <= RAM[OpIdx2];
-        peep3 <= RAM[OpIdx3];
     end
     else begin
         
@@ -299,7 +272,6 @@ always @(posedge clk or posedge reset) begin
     end
     else if ((state == WriteStage && IRAM_A == 6'd63)) begin
         IRAM_A <= 6'd63;
-        done <= 1'b1;
     end
 end
 always @(posedge clk or posedge reset) begin
