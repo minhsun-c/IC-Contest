@@ -1,0 +1,20 @@
+VCD info: dumpfile CONV.vcd opened for output.
+-----------------------------------------------------
+
+START!!! Simulation Start .....
+
+-----------------------------------------------------
+
+ 
+-----------------------------------------------------
+
+--------------------- S U M M A R Y -----------------
+
+FAIL!!!  There are           x errors! in Layer 0 
+
+FAIL!!!  There are           x errors! in Layer 1 
+
+-----------------------------------------------------
+
+Layer 1 (Max-pooling Output) with Kernel 0 is correct!
+Layer 0 (Convolutional Output) with Kernel 0 is correct !
