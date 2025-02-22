@@ -38,61 +38,8 @@ parameter 	kernel0 	= 20'h0A89E,
 
 parameter	bias 		= 40'h0013100000;
 
-/*
-============================================================
-Finite State Machine
-============================================================
-*/
 reg 	[2:0] state;
 reg 	[2:0] nx_state;
-
-always @(posedge clk or posedge reset) begin
-	if (reset) begin
-		state <= InputStage;
-	end
-	else begin
-		state <= nx_state; 
-	end
-end
-
-always @(*) begin
-	if (state == InputStage) begin
-		if (count9 == 4'd10)
-			nx_state = L0Stage;
-		else 
-			nx_state = InputStage;
-	end
-	else if (state == L0Stage) begin
-		if (ConvIdx4 == 12'hfff) begin
-			nx_state = L1Stage;
-		end
-		else begin
-			nx_state = InputStage;
-		end
-	end
-	else if (state == L1Stage) begin
-		if (PoolWrIdx == 12'h3ff && count4 == 3'd5) begin
-			nx_state = EndStage;
-		end
-		else if (count4 < 3'd4) begin
-			nx_state = PoolStage;
-		end
-		else begin
-			nx_state = L1Stage;
-		end
-	end
-	else if (state == PoolStage) begin
-		if (count4 < 3'd4) begin
-			nx_state = PoolStage;
-		end
-		else begin
-			nx_state = L1Stage;
-		end
-	end
-	else begin
-		nx_state = nx_state;
-	end
-end
 
 /*
 ============================================================
@@ -103,35 +50,16 @@ Layer 0: CONV
 reg 	[11:0] 	ConvIdx4;
 wire 	[11:0] 	ConvIdx0, ConvIdx1, ConvIdx2, ConvIdx3, ConvIdx5, ConvIdx6, ConvIdx7, ConvIdx8;
 
-wire 	[5:0] 	x, y;
-assign 	x = ConvIdx4[11:6];
-assign 	y = ConvIdx4[5:0];
-
 assign	ConvIdx0 = {ConvIdx4[11:6] - 6'd1, ConvIdx4[5:0] - 6'd1};
-assign	ConvIdx1 = {ConvIdx4[11:6] - 6'd1, ConvIdx4[5:0]		 };
+assign	ConvIdx1 = {ConvIdx4[11:6] - 6'd1, ConvIdx4[5:0]	   };
 assign	ConvIdx2 = {ConvIdx4[11:6] - 6'd1, ConvIdx4[5:0] + 6'd1};
 assign	ConvIdx3 = {ConvIdx4[11:6], 	   ConvIdx4[5:0] - 6'd1};
 assign	ConvIdx5 = {ConvIdx4[11:6], 	   ConvIdx4[5:0] + 6'd1};
 assign	ConvIdx6 = {ConvIdx4[11:6] + 6'd1, ConvIdx4[5:0] - 6'd1};
-assign	ConvIdx7 = {ConvIdx4[11:6] + 6'd1, ConvIdx4[5:0]		 };
+assign	ConvIdx7 = {ConvIdx4[11:6] + 6'd1, ConvIdx4[5:0]	   };
 assign	ConvIdx8 = {ConvIdx4[11:6] + 6'd1, ConvIdx4[5:0] + 6'd1};
 
 reg 	[3:0] 	count9;
-
-always @(posedge clk or posedge reset) begin
-	if (reset) begin
-		busy <= 1'b0;
-	end
-	else if (ready) begin
-		busy <= 1'b1;
-	end
-	else if (state == EndStage) begin
-		busy <= 1'b0;
-	end
-	else begin
-		
-	end
-end
 
 always @(posedge clk or posedge reset) begin
 	if (reset) begin
@@ -198,11 +126,11 @@ always @(posedge clk or posedge reset) begin
 			4'd3: 
 				idata_tmp <= (ConvIdx4[11:6] == 6'd0  || ConvIdx4[5:0] == 6'd63	) ?  20'd0 : idata;
 			4'd4: 
-				idata_tmp <= (						   ConvIdx4[5:0] == 6'd0 	) ?  20'd0 : idata;
+				idata_tmp <= (						     ConvIdx4[5:0] == 6'd0 	) ?  20'd0 : idata;
 			4'd5: 
-				idata_tmp <=  															 idata;
+				idata_tmp <=  															 	 idata;
 			4'd6: 
-				idata_tmp <= (						   ConvIdx4[5:0] == 6'd63	) ?  20'd0 : idata;
+				idata_tmp <= (						     ConvIdx4[5:0] == 6'd63	) ?  20'd0 : idata;
 			4'd7: 
 				idata_tmp <= (ConvIdx4[11:6] == 6'd63 || ConvIdx4[5:0] == 6'd0 	) ?  20'd0 : idata;
 			4'd8: 
@@ -226,8 +154,6 @@ wire signed	[19:0] roundsum;
 always @(posedge clk or reset) begin
 	if (reset) begin
 		sumtemp <= 40'd0;
-		caddr_wr <= 12'hfff;
-		cdata_wr <= 20'd0;
 	end
 	else if (state == InputStage && busy) begin
 
@@ -240,14 +166,6 @@ always @(posedge clk or reset) begin
 		else begin
 			sumtemp <= sumtemp;	
 		end
-		cwr <= 1'b0;
-		csel <= 3'd0;
-	end
-	else if (state == L0Stage && busy) begin
-		caddr_wr <= caddr_wr + 12'd1;
-		cdata_wr <= (roundsum[19]) ? 20'd0 : roundsum;
-		cwr <= 1'b1;
-		csel <= 3'd1;
 	end
 	else begin
 		
@@ -285,6 +203,7 @@ end
 reg 		[2:0] 	count4;
 reg 		[11:0] 	PoolWrIdx;
 reg signed	[19:0]	PoolData0, PoolData1, PoolData2, PoolData3;
+
 always @(posedge clk or posedge reset) begin
 	if (reset) begin
 		PoolWrIdx <= 12'h0;
@@ -292,16 +211,8 @@ always @(posedge clk or posedge reset) begin
 		count4 <= 3'd0;
 	end
 	else if (state == L1Stage && busy) begin
-		if (count4 == 3'd0) begin
-			cwr <= 1'b0;
-			caddr_wr <= PoolWrIdx;
-		end
-		else if (count4 == 3'd5) begin
+		if (count4 == 3'd5) begin
 			count4 <= 3'd0;
-			cwr <= 1'b1;
-			crd <= 1'b0;
-			csel <= 3'd3;
-			cdata_wr <= MaxData;
 			if (PoolIdx0[5:0] == 6'd62) begin
 				PoolIdx0[11:6] <= PoolIdx0[11:6] + 6'd2;
 				PoolIdx0[5:0] <= 6'd0;
@@ -316,9 +227,6 @@ always @(posedge clk or posedge reset) begin
 	end
 	else if (state == PoolStage && busy) begin
 		count4 <= count4 + 3'd1;
-		cwr <= 1'b0;
-		crd <= 1'b1;
-		csel <= 3'd1;
 		case (count4)
 			3'd0:	
 				caddr_rd <= PoolIdx0;
@@ -339,6 +247,120 @@ always @(posedge clk or posedge reset) begin
 			default: 	
 				caddr_rd <= caddr_rd;
 		endcase
+	end
+	else begin
+		
+	end
+end
+
+/*
+============================================================
+Finite State Machine
+============================================================
+*/
+
+always @(posedge clk or posedge reset) begin
+	if (reset) begin
+		state <= InputStage;
+	end
+	else begin
+		state <= nx_state; 
+	end
+end
+
+always @(*) begin
+	if (state == InputStage) begin
+		if (count9 == 4'd10)
+			nx_state = L0Stage;
+		else 
+			nx_state = InputStage;
+	end
+	else if (state == L0Stage) begin
+		if (ConvIdx4 == 12'hfff) begin
+			nx_state = L1Stage;
+		end
+		else begin
+			nx_state = InputStage;
+		end
+	end
+	else if (state == L1Stage) begin
+		if (PoolWrIdx == 12'h3ff && count4 == 3'd5) begin
+			nx_state = EndStage;
+		end
+		else if (count4 < 3'd4) begin
+			nx_state = PoolStage;
+		end
+		else begin
+			nx_state = L1Stage;
+		end
+	end
+	else if (state == PoolStage) begin
+		if (count4 < 3'd4) begin
+			nx_state = PoolStage;
+		end
+		else begin
+			nx_state = L1Stage;
+		end
+	end
+	else begin
+		nx_state = nx_state;
+	end
+end
+
+/*
+============================================================
+Control Signals
+============================================================
+*/
+
+always @(posedge clk or posedge reset) begin
+	if (reset) begin
+		busy <= 1'b0;
+	end
+	else if (ready) begin
+		busy <= 1'b1;
+	end
+	else if (state == EndStage) begin
+		busy <= 1'b0;
+	end
+	else begin
+		
+	end
+end
+
+always @(posedge clk or posedge reset) begin
+	if (reset) begin
+		caddr_wr <= 12'hfff;
+		cdata_wr <= 20'd0;
+	end
+	else if (state == InputStage && busy) begin
+		cwr <= 1'b0;
+		csel <= 3'd0;
+	end
+	else if (state == L0Stage && busy) begin
+		caddr_wr <= caddr_wr + 12'd1;
+		cdata_wr <= (roundsum[19]) ? 20'd0 : roundsum;
+		cwr <= 1'b1;
+		csel <= 3'd1;
+	end
+	else if (state == L1Stage && busy) begin
+		if (count4 == 3'd0) begin
+			cwr <= 1'b0;
+			caddr_wr <= PoolWrIdx;
+		end
+		else if (count4 == 3'd5) begin
+			cwr <= 1'b1;
+			crd <= 1'b0;
+			csel <= 3'd3;
+			cdata_wr <= MaxData;
+		end
+		else begin
+		end
+	end
+	else if (state == PoolStage && busy) begin
+		cwr <= 1'b0;
+		crd <= 1'b1;
+		csel <= 3'd1;
 	end
 	else begin
 		
