@@ -1,0 +1,2 @@
+通過 gate-level simulation 之 cell area report： 7609
+通過 gate-level simulation 之 clock cycle time (ns)： 2267390
